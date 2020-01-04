@@ -86,8 +86,8 @@ def portfolio_item_report(symbol):
     from email.mime.image import MIMEImage
 
     # Define these once; use them twice!
-    strFrom = 'admin@endocrin-patient.com'
-    strTo = 'send2kust@gmail.com'
+    strFrom = 'your_name_surname'
+    strTo = 'your_email_destination'
     # Create the root message and fill in the from, to, and subject headers
     msgRoot = MIMEMultipart('related')
     subject = 'Portfolio: ' + symbol
@@ -106,7 +106,7 @@ def portfolio_item_report(symbol):
 
     # We reference the image in the IMG SRC attribute by the ID we give it below
     # msgText = MIMEText('Some <i>HTML</i> text and USMV image.<br><img src="cid:image1"><br>Have a nice day', 'html')
-    msgText = MIMEText(email_text + '<br><img src="cid:image1"><br>Have a nice day!', 'html')
+    msgText = MIMEText(email_text + '<br><img src="cid:image1"><br>Good luck with trading!', 'html')
     msgAlternative.attach(msgText)
 
     # This example assumes the image is in the current directory
