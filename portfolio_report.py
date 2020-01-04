@@ -1,12 +1,5 @@
 #!/usr/bin/python3.6
 
-# import sys
-# sys.path.append("/home/httpd/vhosts/endocrin-patient.com/private/lib64/python3.6/site-packages/")
-# sys.path.append("/home/httpd/vhosts/endocrin-patient.com/private/lib/python3.6/site-packages/")
-
-# import os
-# os.environ["PATH"] += os.pathsep + os.pathsep.join(['/home/httpd/vhosts/endocrin-patient.com/private/lib64/python3.6/site-packages','/home/httpd/vhosts/endocrin-patient.com/private/lib/python3.6/site-packages'])
-
 import datetime
 import numpy as np
 from scipy import stats
@@ -18,6 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import matplotlib.dates as mdates
 
+# for getting the current portfolio items from the spreadsheet on your Google Drive
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
     
@@ -28,6 +22,7 @@ class StockDataReader:
     ema_50 = lambda x: x.ewm(span=50).mean()
     ema_20 = lambda x: x.ewm(span=20).mean()
     
+    # average true range
     def atr(df, n=14):
         data = df.copy()
         data['tr0'] = abs(data['High'] - data['Low'])
@@ -124,20 +119,23 @@ def portfolio_item_report(symbol):
     msgRoot.attach(msgImage)
 
     # Send the email (this example assumes SMTP authentication is required)
-
-#    smtp = smtplib.SMTP_SSL('smtp.mail.ru', 465)
-#    smtp.connect('smtp.mail.ru')
-#    smtp.login('likarinfo@bk.ru', 'yp4MWCXTFVau9uq')
     
-    smtp = smtplib.SMTP_SSL('smtp1.mchost.ru', 465)
-    smtp.connect('smtp1.mchost.ru')
-    smtp.login('admin@endocrin-patient.com', 'kUst2BrowsePost')
+    smtp = smtplib.SMTP_SSL('smtp1.your_provider.com', 465)
+    
+    # OR   
+    # smtp = smtplib.SMTP('smtp.mail.ru', 465)
+    # depemding on your SMTP provider
+    
+    smtp.connect('smtp1.your_provider.com')
+    smtp.login('your@email', 'yourPassWord')
     
     smtp.sendmail(strFrom, strTo, msgRoot.as_string())
     smtp.quit()
  
-# symbols = ['PCI', 'HTGC', 'USMV', 'COST', 'UBER', 'RYTM', 'VIG']
-# symbols = ['SPY']
+# for illustration, the simplest diversified portfolios - stocks and bonds
+# symbols = ['SPY', 'AGG']
+# not needed anymore, since the script gets 
+# the current portfolio items from the spreadsheet on your Google Drive
 
 # use creds to create a client to interact with the Google Drive API
 scope = ['https://spreadsheets.google.com/feeds',
@@ -154,4 +152,4 @@ symbols = sheet.col_values(1)
 for symbol in symbols:
     print("Processing " + symbol)
     portfolio_item_report(symbol)
-print('Daiy reporting complete!')
+print('Reporting complete!')
