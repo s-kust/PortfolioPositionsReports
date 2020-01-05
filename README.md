@@ -26,7 +26,7 @@ The advantage of the script is that you can effortlessly change the set of items
 
 ![Portfolio Spreadsheet](/misc/Porttfolio_Spreadsheet.jpg)
 
-<h2>Preparing the script for work: recommended sequence of actions</h2>
+<h2>Preparing the script for work</h2>
 
 Difficulties may arise at the stages of connecting to an SMTP server, planning the regular launch of the script on the remote Python hosting, as well as linking to the Google spreadsheet. These tasks are best solved sequentially, and not all together.
 
