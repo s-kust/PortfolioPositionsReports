@@ -4,7 +4,7 @@ Python script that loads a list of portfolio positions from Google Spreadsheet, 
 
 How it works: 
 1. Load a list of portfolio positions from Google Spreadsheet.
-2. For each position, load the data from Yahoo Finance and generate a report with charts. 
+2. For each position, get the data from Yahoo Finance and generate a report with charts. 
 3. Send every report to the specified email address in a separate letter. 
 
 You can run the script in the cloud regularly at suitable intervals. For example, on business days in the morning and again one hour before the end of the trading time.
