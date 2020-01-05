@@ -10,7 +10,7 @@ How it works:
 You can run the script in the cloud regularly at suitable intervals. For example, on business days in the morning and again one hour before the end of the trading time.
 
 Reports currently look like this.
-![Portfolio position report example](/Portfolio-Position-Report-1.jpg)
+![Portfolio position report example](/misc/Portfolio-Position-Report-1.jpg)
 
 Explanations:
 * Adj Close - adjusted close price;
@@ -24,7 +24,7 @@ In the code, you can easily adjust the lookback periods of the moving averages o
 
 The advantage of the script is that you can effortlessly change the set of items in the portfolio using your smartphone, as long as it works with Google Spreadsheets.
 
-![Portfolio Spreadsheet](/Porttfolio_Spreadsheet.jpg)
+![Portfolio Spreadsheet](/misc/Porttfolio_Spreadsheet.jpg)
 
 <h2>Preparing the script for work: recommended sequence of actions</h2>
 
