@@ -1,29 +1,25 @@
-#!/usr/bin/python3.6
-
-import datetime
-import numpy as np
-from scipy import stats
+import sys
 import pandas as pd
+import numpy as np
 import pandas_datareader.data as web
+import plotly.graph_objects as go
+import plotly.io as pio
+import datetime
+import time
 import smtplib
 import email
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-import matplotlib.dates as mdates
-
-# for getting the current portfolio items from the spreadsheet on your Google Drive
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
+# from IPython.core.debugger import set_trace
+import mplfinance as mpf
+import os
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-    
-class StockDataReader:
-    start_date = datetime.datetime.now() - datetime.timedelta(days=1.5*365)
-#     start_date = '1-1-1995'
-    
-    ema_50 = lambda x: x.ewm(span=50).mean()
-    ema_20 = lambda x: x.ewm(span=20).mean()
-    
-    # average true range
-    def atr(df, n=14):
+
+# ATR - average true range
+
+def atr(df, n=14):
         data = df.copy()
         data['tr0'] = abs(data['High'] - data['Low'])
         data['tr1'] = abs(data['High'] - data['Close'].shift())
@@ -31,66 +27,48 @@ class StockDataReader:
         tr = data[['tr0', 'tr1', 'tr2']].max(axis=1)
         atr = tr.ewm(alpha=1/n, min_periods=n).mean()
         return atr
+    
+# the prices data is already imported, 
+# now plot graphs and send them in emails
+# these actions are repeated for every ticker, so they are designed as a function
 
-    @classmethod
-    def read_and_process(cls, symbol):
-        res = web.DataReader(symbol, 'yahoo', cls.start_date)
-        res['SMA-200'] = res['Adj Close'].rolling(200).mean()
-        res['EMA-20'] = cls.ema_20(res['Adj Close'])
-        res['EMA-50'] = cls.ema_50(res['Adj Close'])
-        res['20 Day MA'] = res['Adj Close'].rolling(window=20).mean()
-        res['20 Day STD'] = res['Adj Close'].rolling(window=20).std()
-        res['Upper Band'] = res['20 Day MA'] + (res['20 Day STD'] * 2.2)
-        res['Lower Band'] = res['20 Day MA'] - (res['20 Day STD'] * 2.2)
-        res['ATR'] = cls.atr(res)
-        res = res.drop(['High', 'Low', 'Open', 'Close', 'Volume'], axis=1) # delete unnecessary columns
-        return (res)
+def processSymbol (symbol1, symbol2=None, keywordTopic1='Portfolio:', keywordTopic2='Long'):
+            
+    # single ticker or long-short spread of two tickers?
+    
+    if (symbol2 is None):
+        type='single'
+        subject = keywordTopic1 + ' ' + keywordTopic2 + ' ' + symbol1
+        filename = symbol1+'test'+'.png'
+        plotTitle=symbol1+' Daily Price'
+        plotType='ohlc'
+        data = allTickersData[symbol1]
+    else:
+        type='spread'
+        subject = 'Spread ' + symbol1 + ' ' + symbol2
+        filename = symbol1+'_'+symbol2+'test'+'.png'
+        plotTitle='Spread '+symbol1+'-'+symbol2+' Daily Price'
+        plotType='line'
+        data1 = allTickersData[symbol1] # long
+        data2 = allTickersData[symbol2] # short
+        data = data1/data2    
+   
+    mydpi = 100 # determined by trial and error
+    if (type=='single'):
+        res1 = data.tail(50)
+        atr_plot = mpf.make_addplot(res1['ATR'], panel=2, ylabel='ATR')
+        mpf.plot(res1, type=plotType, style='yahoo', addplot=atr_plot, \
+             title=plotTitle, volume=True, figsize =(794/mydpi,512/mydpi), savefig=filename)
+    else:
+        res1 = data.tail(350)
+        mpf.plot(res1, type=plotType, style='yahoo', \
+             title=plotTitle, figsize =(794/mydpi,512/mydpi), savefig=filename)
 
-def portfolio_item_report(symbol):
-    res = StockDataReader.read_and_process(symbol)
-    res1 = res[-66:]
-    gs = gridspec.GridSpec(3,1)
-    fig = plt.figure()
-    ax1 = fig.add_subplot(gs[0])
-    ax1.title.set_text(symbol + ' ' + 'Price and Moving Averages')
-    res1['Adj Close'].plot(ax=ax1)
-    res1['SMA-200'].plot(ax=ax1)
-    res1['EMA-50'].plot(ax=ax1)
-    res1['EMA-20'].plot(ax=ax1)
-    ax1.legend(loc="upper left")
-    ax2 = fig.add_subplot(gs[1], sharex=ax1)
-    ax2.title.set_text(symbol + ' ' + 'Price and Bollinger Bands')
-    res1['Adj Close'].plot(ax=ax2)
-    res1['Upper Band'].plot(ax=ax2)
-    res1['Lower Band'].plot(ax=ax2)
-    ax2.legend(loc="upper left")
-    ax3 = fig.add_subplot(gs[2], sharex=ax1)
-    ax3.title.set_text(symbol + ' ' + 'Trailing Volatility')
-    (res1['ATR']/res1['Adj Close']).plot(ax=ax3)
-    ax3.xaxis.set_major_locator(mdates.MonthLocator())
-    plt.gcf().set_size_inches(12, 12)
-    filename = symbol + '.png'
-    plt.savefig(filename)
-    # plt.show()
-
-    df = res1.tail(2)
-    df = df.drop(['20 Day MA', '20 Day STD', 'Lower Band'], axis=1)
-    email_text = "{df}"
-    email_text = email_text.format(df=df.to_html())
-
-    # Send an HTML email with an embedded image and a plain text message for
-    # email clients that don't want to display the HTML.
-
-    from email.mime.multipart import MIMEMultipart
-    from email.mime.text import MIMEText
-    from email.mime.image import MIMEImage
-
-    # Define these once; use them twice!
-    strFrom = 'your_name_surname'
-    strTo = 'your_email_destination'
+    strFrom = 'send_from@example.com'
+    strTo = 'send_to@example.com'
+    
     # Create the root message and fill in the from, to, and subject headers
     msgRoot = MIMEMultipart('related')
-    subject = 'Portfolio: ' + symbol
     msgRoot['Subject'] = subject
     msgRoot['From'] = strFrom
     msgRoot['To'] = strTo
@@ -106,36 +84,24 @@ def portfolio_item_report(symbol):
 
     # We reference the image in the IMG SRC attribute by the ID we give it below
     # msgText = MIMEText('Some <i>HTML</i> text and USMV image.<br><img src="cid:image1"><br>Have a nice day', 'html')
-    msgText = MIMEText(email_text + '<br><img src="cid:image1"><br>Good luck with trading!', 'html')
+    msgText = MIMEText('<img src="cid:image1"><br>Have a nice day!', 'html')
     msgAlternative.attach(msgText)
-
-    # This example assumes the image is in the current directory
+    # This code assumes the image is in the current directory
     fp = open(filename, 'rb')
     msgImage = MIMEImage(fp.read())
     fp.close()
+    if os.path.exists(filename):
+        os.remove(filename)
 
     # Define the image's ID as referenced above
     msgImage.add_header('Content-ID', '<image1>')
     msgRoot.attach(msgImage)
 
-    # Send the email (this example assumes SMTP authentication is required)
-    
     smtp = smtplib.SMTP_SSL('smtp1.your_provider.com', 465)
-    
-    # OR   
-    # smtp = smtplib.SMTP('smtp.mail.ru', 465)
-    # depemding on your SMTP provider
-    
     smtp.connect('smtp1.your_provider.com')
-    smtp.login('your@email', 'yourPassWord')
-    
+    smtp.login('send_from@example.com', 'pAsswo2rd')   
     smtp.sendmail(strFrom, strTo, msgRoot.as_string())
     smtp.quit()
- 
-# for illustration, the simplest diversified portfolios - stocks and bonds
-# symbols = ['SPY', 'AGG']
-# not needed anymore, since the script gets 
-# the current portfolio items from the spreadsheet on your Google Drive
 
 # use creds to create a client to interact with the Google Drive API
 scope = ['https://spreadsheets.google.com/feeds',
@@ -145,11 +111,49 @@ client = gspread.authorize(creds)
 
 # Find a workbook by name and open the first sheet
 # Make sure you use the right name here.
-sheet = client.open("Portfolio").sheet1
+sheet = client.open("Portfolio")
 
-symbols = sheet.col_values(1)
+sheet_instance1 = sheet.get_worksheet(0)
+ideas = pd.DataFrame.from_dict(sheet_instance1.get_all_records())
+ideas = ideas.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+ideas.replace('', np.nan, inplace=True)
+longs = ideas['Long'].dropna()
+shorts = ideas['Short'].dropna()
+spreads = ideas[['SpreadLong', 'SpreadShort']].dropna()
+allTickers=[]
+allTickers.extend(longs.values.tolist())
+allTickers.extend(shorts.values.tolist())
+allTickers.extend(spreads['SpreadLong'].values.tolist())
+allTickers.extend(spreads['SpreadShort'].values.tolist())
+allTickers = set(allTickers) # remove duplicates, for not to import the same tiker data several times
 
-for symbol in symbols:
-    print("Processing " + symbol)
-    portfolio_item_report(symbol)
-print('Reporting complete!')
+print(allTickers)
+
+# for long-short spreads, we use the last 1.5 years data
+start_date = datetime.datetime.now() - datetime.timedelta(days=1.5*365) 
+allTickersData = {}
+
+# first, import all the required tickers data from Yahoo! Finance
+for ticker in allTickers:
+    print('Importing data', ticker, '...')
+    time.sleep(1)
+    imported = web.DataReader(ticker, 'yahoo', start_date)
+    imported['ATR_100'] = atr(imported, 100)
+    imported['ATR_6'] = atr(imported, 6)
+    imported['ATR'] = imported['ATR_6']/imported['ATR_100'] 
+    allTickersData.update({ticker : imported})
+
+# then, plot charts and send e-mails
+for ticker in longs:
+    print('Processing Long', ticker)
+    time.sleep(0.5)
+    processSymbol(ticker, keywordTopic1='Idea:', keywordTopic2='Long')
+for ticker in shorts:
+    print('Processing Short', ticker)
+    time.sleep(0.5)
+    processSymbol(ticker, keywordTopic1='Idea:', keywordTopic2='Short')
+for index, row in spreads.iterrows():
+    time.sleep(0.5)
+    print('Processing Spread', row['SpreadLong'], row['SpreadShort'])
+    processSymbol(row['SpreadLong'], row['SpreadShort'])
+print('Daiy reporting complete!')
