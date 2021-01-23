@@ -6,8 +6,8 @@ Python script that loads a list of stocks or ETF tickers from Google Spreadsheet
 
 How it works: 
 1. Load a list of tickers from Google Spreadsheet.
-2. For each ticker, get the data from Yahoo Finance and generate a report with charts. 
-3. For each ticker or long-short spread, generate a report with charts and send it to the specified email address in a separate letter. 
+2. For each ticker, import the daily prices data from Yahoo! Finance. 
+3. For each ticker or long-short spread, generate a report with charts and send it to the specified email address. 
 
 You can run the script in the cloud regularly at suitable intervals. For example, on business days in the morning and again 15 minutes before the end of the trading time.
 
@@ -18,7 +18,12 @@ and
 
 <h2>Preparing the script for work</h2>
 
-Unfortunately, the initial setup of the script requires some skill. Difficulties may arise at the stages of connecting to an SMTP server, planning the regular launch of the script on the remote Python hosting, as well as linking to the Google spreadsheet. These tasks are best solved sequentially, and not all together.
+Unfortunately, the initial setup of the script requires some skill. Difficulties may arise at the following stages:
+1. Connecting to the SMTP server. 
+1. Planning the regular launch of the script on the server.
+1. Interactions with the Google spreadsheet. 
+
+The listed tasks are best solved sequentially, and not all together.
 
 1. Fill the SMTP server settings in the script code in lines 100 and 101.
 1. Indicate the sender on line 67, as well as the recipient's email on line 68,
